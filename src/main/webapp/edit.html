@@ -1,0 +1,449 @@
+<link rel="stylesheet" type="text/css" href="iview/iview.css">
+<script src="iview/vue.js"></script>
+<script src="iview/iview.min.js"></script>
+<script src="iview/jquery-3.4.1.min.js"></script>
+<meta charset="UTF-8">
+<style>
+    #app {
+        overflow: auto;
+        height: calc(100% - 45px);
+    }
+
+    .ivu-table {
+        height: auto;
+    }
+
+    body {
+        opacity: 0;
+        animation: page-fade-in 1s forwards;
+    }
+
+    @keyframes page-fade-in {
+        0% {
+            opacity: 0
+        }
+
+        100% {
+            opacity: 1
+        }
+    }
+
+</style>
+<style>
+    .demo-tree-render .ivu-tree-title {
+        width: 100%;
+    }
+
+</style>
+<div id="app">
+
+
+    <Card>
+        <p slot="title">
+            <Icon type="ios-list-box-outline" size="20"></Icon>
+            {{title}}
+        </p>
+        <Row justify="center" align="middle">
+            <Tree :data="data5" :render="renderContent" class="demo-tree-render"></Tree>
+        </Row>
+    </Card>
+
+    <Modal title="新增菜单" v-model="addModel" class-name="vertical-center-modal" footer-hide>
+        <i-Form ref="formValidate" :model="formValidate" :rules="ruleValidate" :label-width="80">
+            <Form-Item label="父级菜单">
+                <i-Input v-model="parentMenu" disabled></i-Input>
+            </Form-Item>
+            <Form-Item label="菜单名称" prop="name">
+                <i-Input v-model="formValidate.name" placeholder="请输入菜单名"></i-Input>
+            </Form-Item>
+            <Form-Item label="菜单图标" prop="Icon">
+                <i-Input v-model="formValidate.Icon" placeholder="请输入菜单图标"></i-Input>
+            </Form-Item>
+            <Form-Item label="页面地址" prop="url">
+                <i-Input v-model="formValidate.url" placeholder="请输入页面地址"></i-Input>
+            </Form-Item>
+            <Form-Item label="英文名称" prop="englishName">
+                <i-Input v-model="formValidate.englishName" placeholder="请输入英文名称"></i-Input>
+            </Form-Item>
+            <Form-Item label="菜单描述" prop="desc">
+                <i-Input v-model="formValidate.desc" type="textarea" :autosize="{minRows: 2,maxRows: 20}"
+                         placeholder="一些简单描述"></i-Input>
+            </Form-Item>
+            <Form-Item>
+                <i-Button type="primary" @click="handleSubmit('formValidate')">确认</i-Button>
+                <i-Button @click="handleReset('formValidate')" style="margin-left: 8px">重置</i-Button>
+            </Form-Item>
+        </i-Form>
+    </Modal>
+
+    <Modal v-model="delModel" width="360">
+        <p slot="header" style="color:#f60;text-align:center">
+            <Icon type="ios-information-circle"></Icon>
+            <span>删除确认</span>
+        </p>
+        <div style="text-align:center">
+            <p style="color: red;margin-top: 5px;">即将删除菜单</p>
+            <p v-for="item in delArray">{{item.name}}</p>
+            <p style="color: red;margin-top: 5px;">后无法恢复,请谨慎操作!</p>
+        </div>
+        <div slot="footer">
+            <i-Button type="error" size="large" long @click="del">删除</i-Button>
+        </div>
+    </Modal>
+
+
+</div>
+<script>
+    new Vue({
+        el: "#app",
+        data() {
+            return {
+                title: "菜单管理",
+                addModel: false,
+                delModel: false,
+                formValidate: {
+                    name: '',
+                    Icon: '',
+                    url: '',
+                    englishName: '',
+                    desc: '',
+                },
+                parentMenu: '无',
+                ruleValidate: {
+                    name: [
+                        {required: true, message: '菜单名称不能为空', trigger: 'blur'}
+                    ],
+                    Icon: [
+                        {required: true, message: '图标不能为空', trigger: 'blur'},
+                    ],
+                    url: [
+                        {required: true, message: '菜单地址不能为空', trigger: 'blur'}
+                    ],
+                    englishName: [
+                        {required: true, message: '英文名称不能为空', trigger: 'blur'}
+                    ],
+                    desc: [
+                        {required: true, message: '请输入描述', trigger: 'blur'},
+                        {type: 'string', min: 2, message: '至少两个字', trigger: 'blur'}
+                    ]
+                },
+                tempAppendData: null,
+                tempRemoveData: null,
+                tempRemoveParent: null,//temp都是临时使用数组
+                delArray: [],//汇总需要删除的菜单id
+                data5: [
+                    {
+                        title: '菜单列表',
+                        expand: true,
+                        children: [],
+                        render: (h, {root, node, data}) => {
+                            return h('span', {
+                                style: {
+                                    display: 'inline-block',
+                                    width: '100%'
+                                }
+                            }, [
+                                h('span', [
+                                    h('Icon', {
+                                        props: {
+                                            type: 'ios-folder-outline'
+                                        },
+                                        style: {
+                                            marginRight: '8px'
+                                        }
+                                    }),
+                                    h('span', data.title)
+                                ]),
+                                h('span', {
+                                    style: {
+                                        display: 'inline-block',
+                                        float: 'right',
+                                        marginRight: '59px'
+                                    }
+                                }, [
+                                    h('Button', {
+                                        props: Object.assign({}, this.buttonProps, {
+                                            icon: 'ios-add',
+                                            type: 'primary'
+                                        }),
+                                        style: {
+                                            width: '89px'
+                                        },
+                                        on: {
+                                            click: () => {
+                                                this.append(data);
+                                            }
+
+                                        }
+                                    })
+                                ])
+                            ]);
+                        },
+
+                    }
+                ],
+                buttonProps: {
+                    type: 'default',
+                    size: 'small',
+                }
+            }
+        },
+
+        created() {
+            var Data = [
+                {name: '首页', label: '首页', Icon: "md-home", url: 'menu_data.html'},
+                {
+                    label: '信息管理', name: "信息管理", Icon: "ios-book-outline", url: 'index.html',
+                    children: [
+                        {
+                            name: '菜谱管理', label: '菜谱管理', Icon: "ios-book-outline", url: 'CookBook/list.html',
+                            children: [
+                                {name: '食材管理', label: '食材管理', Icon: "ios-book-outline", url: 'User/list.html'},
+                                {
+                                    name: '菜系管理', label: '菜系管理', Icon: "ios-book-outline", url: '',
+                                    children: [{
+                                        name: '川菜管理',
+                                        label: '川菜管理',
+                                        Icon: "ios-book-outline",
+                                        url: 'Customter/list.html'
+                                    },
+                                        {
+                                            name: '越菜管理',
+                                            label: '越菜管理',
+                                            Icon: "ios-people-outline",
+                                            url: 'Customter/list.html',
+                                            children: [
+                                                {
+                                                    name: '红烧肉管理',
+                                                    label: '红烧肉管理',
+                                                    Icon: "ios-book-outline",
+                                                    url: '',
+                                                    children: [
+                                                        {
+                                                            name: '清蒸管理',
+                                                            label: '清蒸管理',
+                                                            Icon: "ios-people-outline",
+                                                            url: 'Customter/list.html',
+                                                            children: [
+                                                                {
+                                                                    name: '递归管理',
+                                                                    label: '递归管理',
+                                                                    Icon: "ios-book-outline",
+                                                                    url: ''
+                                                                }
+                                                            ],
+                                                        },
+                                                    ]
+                                                },
+                                            ]
+                                        },
+                                    ]
+                                },
+                            ]
+                        },
+                        {name: '顾客管理', label: '顾客管理', Icon: "ios-people-outline", url: 'Customter/list.html'},
+
+                    ]
+                },
+                {label: '国际管理', name: "国际管理", Icon: "ios-card-outline", url: 'index.html'},
+                {label: '全屏管理', name: "全屏管理", Icon: "ios-archive", url: 'index.html'},
+                {
+                    label: '系统管理', name: "系统管理", Icon: "md-alarm", url: 'index.html',
+                    children: [
+                        {name: '用户管理', label: '用户管理', Icon: "ios-book-outline", url: 'User/list.html'},
+                        {name: '角色管理', label: '角色管理', Icon: "ios-book-outline", url: ''},
+
+                    ]
+                },
+
+                {
+                    label: '用户设置', name: "用户设置", Icon: "md-apps", url: 'index.html',
+                    children: [
+                        {
+                            name: '基础设置', label: '基础设置', Icon: "ios-book-outline", url: 'User/list.html',
+                            children: [
+                                {name: '天空设置', label: '天空设置', Icon: "ios-book-outline", url: '的'},
+                                {
+                                    name: '大会设置', label: '大会设置', Icon: "ios-book-outline", url: '的',
+                                    children: [
+                                        {name: '大树设置', label: '大树设置', Icon: "ios-book-outline", url: '的'},
+                                        {
+                                            name: '衣服设置', label: '衣服设置', Icon: "ios-book-outline", url: '的',
+                                            children: [
+                                                {name: '电影设置', label: '电影设置', Icon: "ios-book-outline", url: '的'}
+                                            ]
+
+                                        },
+
+                                    ]
+                                },
+                                {name: '海洋设置', label: '海洋设置', Icon: "ios-book-outline", url: '的'}
+                            ]
+                        },
+                        {name: '密码设置', label: '密码设置', Icon: "ios-book-outline", url: ''},
+                        {
+                            name: '特殊设置', label: '特殊设置', Icon: "ios-book-outline", url: '', children: [
+                                {name: '卫星设置', label: '卫星设置', Icon: "ios-book-outline", url: ''},
+                                {
+                                    name: '天气设置', label: '天气设置', Icon: "ios-book-outline", url: '', children: [
+                                        {name: '数目设置', label: '数目设置', Icon: "ios-book-outline", url: ''},
+                                        {name: '无敌设置', label: '无敌设置', Icon: "ios-book-outline", url: ''},
+                                    ]
+                                },
+                                {name: '河流设置', label: '河流设置', Icon: "ios-book-outline", url: ''},
+                            ]
+                        },
+                    ]
+                },
+            ];
+            this.getlangData(Data)
+            this.data5[0].children = Data
+        },
+        methods: {
+            handleSubmit: function (name) {//提交方法
+                this.$refs[name].validate((valid) => {
+                    if (valid) {
+                        this.$Message.success('Success!');
+                        console.log(this.formValidate)
+                        var data = this.tempAppendData;
+                        const children = data.children || [];
+                        children.push({
+                            title: 'appended node',
+
+                        });
+                        data.expand = true//点击添加就把他的子菜单展现出来
+                        this.$set(data, 'children', children);
+                        this.addModel = false//关闭model
+                        this.$refs['formValidate'].resetFields();// 清空值
+                    } else {
+                        this.$Message.error('Fail!');
+                    }
+                })
+            },
+
+            del: function () {//删除从菜单方法
+                this.delModel = false;
+                var parent = this.tempRemoveParent;
+                var data = this.tempRemoveData;
+                /*下面就可以ajax去删除对应的菜单了*/
+                console.log(this.delArray)
+                const index = parent.children.indexOf(data);
+                parent.children.splice(index, 1);
+            },
+
+            getDelInfo: function (data) {//递归删除菜单
+                for (let i = 0; i < data.length; i++) {
+                    if (data[i].children && data[i].children.length > 0) {
+                        this.delArray.push(data[i])
+                        this.getDelInfo(data[i].children)
+                    } else {
+                        this.delArray.push(data[i])
+                    }
+                }
+
+            },
+
+            handleReset: function (name) {//重置方法
+                this.$refs[name].resetFields();
+            },
+            getlangData(data) {//特殊处理一下菜单数据，加入一些其他的属性
+                for (let i = 0; i < data.length; i++) {
+                    if (data[i].children != undefined && data[i].children.length > 0) {
+                        data[i] = $.extend({}, data[i], {title: data[i].name, expand: false});
+                        this.getlangData(data[i].children);
+                    } else {
+                        data[i] = $.extend({}, data[i], {title: data[i].name, expand: false});
+                    }
+                }
+            },
+            renderContent(h, {root, node, data}) {
+                return h('span', {
+                    style: {
+                        display: 'inline-block',
+                        width: '100%'
+                    }
+                }, [
+                    h('span', [
+                        h('Icon', {
+                            props: {
+                                type: data.Icon
+                            },
+                            style: {
+                                marginRight: '8px'
+                            }
+                        }),
+                        h('span', data.title)
+                    ]),
+                    h('span', {
+                        style: {
+                            display: 'inline-block',
+                            float: 'right',
+                            marginRight: '64px'
+                        }
+                    }, [h('Tooltip', {
+                        props: {
+                            content: "添加",
+                            placement: "left",
+                            transfer: true
+                        }
+                    }, [
+                        h('Button', {
+                            props: Object.assign({}, this.buttonProps, {
+                                icon: 'ios-add'
+                            }),
+                            style: {
+                                marginRight: '30px'
+                            },
+                            on: {
+                                click: () => {
+                                    this.append(data)
+                                }
+                            }
+                        }),
+                    ]),
+                        h('Tooltip', {
+                            props: {
+                                content: "删除",
+                                placement: "right",
+                                transfer: true
+                            }
+                        }, [
+                            h('Button', {
+                                props: Object.assign({}, this.buttonProps, {
+                                    icon: 'ios-remove'
+                                }),
+
+                                on: {
+                                    click: () => {
+                                        this.remove(root, node, data)
+                                    }
+                                }
+                            })
+                        ])
+                    ])
+                ]);
+            },
+
+            append(data) {
+                this.addModel = true;
+                this.parentMenu = data.title;
+                this.tempAppendData = data;
+            },
+            remove(root, node, data) {
+                this.delArray = []
+                this.delModel = true;
+                const parentKey = root.find(el => el === node).parent;
+                const parent = root.find(el => el.nodeKey === parentKey).node;
+                if (data.children && data.children.length > 0) {
+                    this.getDelInfo(data.children)
+                } else {
+                    console.log("只有一级，直接删除" + data.name)
+                }
+                this.delArray.push(data)//删除成功后，需要把删除列表清空
+                this.tempRemoveParent = parent;
+                this.tempRemoveData = data;
+            }
+        }
+
+    });
+</script>
