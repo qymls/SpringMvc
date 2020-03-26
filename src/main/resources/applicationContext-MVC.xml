@@ -15,8 +15,33 @@
     -->
 
     <!--放行静态资源-->
-    <mvc:default-servlet-handler></mvc:default-servlet-handler><!--相当于让RequestMapping注解失效-->
-    <mvc:annotation-driven></mvc:annotation-driven><!--让注解重新生效-->
+    <mvc:default-servlet-handler/><!--相当于让RequestMapping注解失效-->
+    <mvc:annotation-driven>
+        <!-- 添加消息转换器 解决json数据传递过程中的乱码问题 -->
+        <mvc:message-converters>
+            <bean class="com.alibaba.fastjson.support.spring.FastJsonHttpMessageConverter"><!--引入第三方fastJson包-->
+                <property name="supportedMediaTypes">
+                    <list>
+                        <value>text/html;charset=UTF-8</value>
+                        <value>application/json;charset=UTF-8</value>
+                    </list>
+                </property>
+                <!--配置日期解析格式-->
+                <property name="fastJsonConfig"><!--Spring 4.2 以上配置fastjson的正确方式，以前配置是过时的配置-->
+                    <bean class="com.alibaba.fastjson.support.config.FastJsonConfig">
+                        <property name="features">
+                            <list>
+                                <value>AllowArbitraryCommas</value>
+                                <value>AllowUnQuotedFieldNames</value>
+                                <value>DisableCircularReferenceDetect</value>
+                            </list>
+                        </property>
+                        <property name="dateFormat" value="yyyy-MM-dd HH:mm:ss"></property>
+                    </bean>
+                </property>
+            </bean>
+        </mvc:message-converters>
+    </mvc:annotation-driven><!--让注解重新生效-->
 
     <!--视图解析器-->
     <bean class="org.springframework.web.servlet.view.InternalResourceViewResolver" id="internalResourceViewResolver">
